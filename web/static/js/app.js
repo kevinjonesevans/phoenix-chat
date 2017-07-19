@@ -16,7 +16,6 @@ import {Socket, Presence} from "phoenix"
 
 // Socket
 let user = document.getElementById("User").innerText
-console.log(user)
 let socket = new Socket("/socket", {params: {user: user}})
 socket.connect()
 
@@ -27,20 +26,29 @@ let formatTimestamp = (timestamp) => {
   let date = new Date(timestamp)
   return date.toLocaleTimeString()
 }
-let listBy = (user, {metas: metas}) => {
-  return {
-    user: user,
-    onlineAt: formatTimestamp(metas[0].online_at)
-  }
+// let listBy = (user, {metas: metas}) => {
+//   console.log("user:", user)
+//   console.log(metas[0].user)
+//   return {
+//     user: user,
+//     onlineAt: formatTimestamp(metas[0].online_at)
+//   }
+// }
+let listBy = (user, {metas: [first, ...rest]}) => {
+  first.name = user
+  first.count = rest.length + 1
+  console.log("user:", user, first.online_at)
+  return first
 }
 
 let userList = document.getElementById("UserList")
 let render = (presences) => {
+  console.log("presences: ", presences)
   userList.innerHTML = Presence.list(presences, listBy)
     .map(presence => `
       <li>
-        <b>${presence.user}</b>
-        <br><small>online since ${presence.onlineAt}</small>
+        <b>${presence.user}</b><em>(${presence.count})</em>
+        <!--<br><small>online since ${presence.online_at}</small>-->
       </li>
     `)
     .join("")
@@ -48,13 +56,13 @@ let render = (presences) => {
 
 // Channels
 let room = socket.channel("room:lobby", {})
-room.on("presence_state", state => {
-  Presence.syncState(presences, state)
+room.on("presences", state => {
+  presences = Presence.syncState(presences, state)
   render(presences)
 })
 
 room.on("presence_diff", diff => {
-  Presence.syncDiff(presences, diff)
+  presences = Presence.syncDiff(presences, diff)
   render(presences)
 })
 
